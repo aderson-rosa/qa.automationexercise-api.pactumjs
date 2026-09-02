@@ -1,7 +1,7 @@
 {
   "name": "qa.automationexercise-api.pactumjs",
   "version": "1.0.0",
-  "description": "Testes de API do ServeRest com PactumJS, Joi (contrato) e Mochawesome",
+  "description": "Testes de API do ServeRest com PactumJS, Joi (contrato) e Allure Reports",
   "private": true,
   "scripts": {
     "test": "mocha",
