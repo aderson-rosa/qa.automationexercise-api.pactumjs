@@ -50,11 +50,16 @@ npm run report:allure
 Cada teste aparece no relatório com **todos os seus passos**, na estrutura Triple A:
 
 ```
-Arrange: usuário já cadastrado na aplicação
-Act: repetir o cadastro com o mesmo e-mail
-  └── POST /usuarios - e-mail duplicado   [evidência anexada]
-Assert: API rejeita a duplicidade de e-mail
+Arrange: usuário válido com e-mail único
+Act: cadastrar em POST /usuarios
+  └── POST /usuarios - cadastro com sucesso        [requisição, resposta e status validado]
+Assert: corpo confirma o cadastro e devolve o _id, sem campos extras
+  ├── Chaves do corpo: _id, message                [esperado x recebido]
+  ├── Campo "message"                              [esperado x recebido]
+  └── Campo "_id" no formato 16 caracteres alfanuméricos   [esperado x recebido]
 ```
+
+Cada validação vira um passo próprio com o par **esperado x recebido** anexado, e não apenas o nome da asserção: o relatório mostra o que foi comparado. Nos testes de contrato, o anexo lista **os campos exigidos pelo schema** e o corpo validado.
 
 A **evidência da chamada** (método, URL, corpo enviado, status, corpo recebido e as validações aplicadas pelo framework) é anexada em todos os cenários, inclusive nos aprovados: é o equivalente ao screenshot em testes de interface e permite auditar o que trafegou sem reexecutar a suíte. Campos sensíveis (`password`, `authorization`) são mascarados, já que o relatório fica publicado.
 

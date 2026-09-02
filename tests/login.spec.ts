@@ -1,10 +1,16 @@
-import assert from 'node:assert/strict';
 import { buildUsuario, type Usuario } from '../src/factories/usuario.factory';
 import { postUsuario, deleteUsuario } from '../src/services/usuarios.service';
 import { postLogin } from '../src/services/login.service';
-import { expectSchema, expectCamposObrigatorios } from '../src/support/schema.assert';
 import { executarComEvidencia } from '../src/support/evidencias';
 import { arrange, act, assertar } from '../src/support/passos';
+import {
+  validarCorpo,
+  validarChaves,
+  validarCampo,
+  validarFormato,
+  validarSchema,
+  validarObrigatoriedade,
+} from '../src/support/validacoes';
 import { loginComSucessoSchema } from '../src/schemas/login.schema';
 import { respostaComMensagemSchema, erroCamposObrigatoriosSchema } from '../src/schemas/erro.schema';
 
@@ -37,15 +43,15 @@ describe('Login @login', () => {
         ),
       );
 
-      await assertar('corpo contém apenas mensagem de sucesso e token JWT no padrão Bearer', () => {
-        assert.deepEqual(
-          Object.keys(corpo).sort(),
-          ['authorization', 'message'],
-          'a resposta não deve conter campos além de message e authorization',
+      await assertar('corpo traz mensagem de sucesso e token JWT, sem campos extras', async () => {
+        await validarChaves(corpo, ['message', 'authorization']);
+        await validarCampo('message', corpo.message, 'Login realizado com sucesso');
+        await validarFormato(
+          'authorization',
+          corpo.authorization,
+          /^Bearer\s[\w-]+\.[\w-]+\.[\w-]+$/,
+          'Bearer <header>.<payload>.<assinatura>',
         );
-        assert.equal(corpo.message, 'Login realizado com sucesso');
-        // Token no formato "Bearer <header>.<payload>.<assinatura>".
-        assert.match(corpo.authorization, /^Bearer\s[\w-]+\.[\w-]+\.[\w-]+$/);
       });
     });
 
@@ -56,21 +62,15 @@ describe('Login @login', () => {
       }));
 
       const corpo = await act('autenticar em POST /login', () =>
-        executarComEvidencia(
+        executarComEvidencia<Record<string, unknown>>(
           postLogin(credenciais).expectStatus(200).returns('res.body'),
           'POST /login - contrato da resposta',
         ),
       );
 
-      await assertar('corpo adere ao schema Joi de login com sucesso', () => {
-        expectSchema(corpo, loginComSucessoSchema);
-      });
-
-      await assertar('schema exige mensagem e token, rejeitando respostas incompletas', () => {
-        expectCamposObrigatorios(corpo as Record<string, unknown>, loginComSucessoSchema, [
-          'message',
-          'authorization',
-        ]);
+      await assertar('contrato de sucesso é cumprido e exige todos os campos', async () => {
+        await validarSchema(corpo, loginComSucessoSchema, 'login com sucesso');
+        await validarObrigatoriedade(corpo, loginComSucessoSchema, ['message', 'authorization']);
       });
     });
 
@@ -81,21 +81,16 @@ describe('Login @login', () => {
       }));
 
       const corpo = await act('tentar autenticar em POST /login', () =>
-        executarComEvidencia<{ message: string }>(
+        executarComEvidencia<Record<string, unknown>>(
           postLogin(credenciais).expectStatus(401).returns('res.body'),
           'POST /login - senha incorreta',
         ),
       );
 
-      await assertar('corpo traz apenas a mensagem de credenciais inválidas, sem token', () => {
-        assert.deepEqual(corpo, { message: 'Email e/ou senha inválidos' });
-      });
-
-      await assertar('contrato: resposta de erro adere ao schema de mensagem única', () => {
-        expectSchema(corpo, respostaComMensagemSchema);
-        expectCamposObrigatorios(corpo as unknown as Record<string, unknown>, respostaComMensagemSchema, [
-          'message',
-        ]);
+      await assertar('corpo traz apenas a mensagem de credenciais inválidas', async () => {
+        await validarCorpo(corpo, { message: 'Email e/ou senha inválidos' });
+        await validarSchema(corpo, respostaComMensagemSchema, 'erro com mensagem única');
+        await validarObrigatoriedade(corpo, respostaComMensagemSchema, ['message']);
       });
     });
 
@@ -103,21 +98,18 @@ describe('Login @login', () => {
       const credenciaisVazias = await arrange('requisição sem e-mail e sem senha', () => ({}));
 
       const corpo = await act('enviar POST /login sem os campos obrigatórios', () =>
-        executarComEvidencia<Record<string, string>>(
+        executarComEvidencia<Record<string, unknown>>(
           postLogin(credenciaisVazias as never).expectStatus(400).returns('res.body'),
           'POST /login - campos obrigatórios ausentes',
         ),
       );
 
-      await assertar('API aponta e-mail e senha como obrigatórios', () => {
-        assert.deepEqual(corpo, {
+      await assertar('API aponta e-mail e senha como obrigatórios', async () => {
+        await validarCorpo(corpo, {
           email: 'email é obrigatório',
           password: 'password é obrigatório',
         });
-      });
-
-      await assertar('contrato: erro de validação adere ao schema de campos obrigatórios', () => {
-        expectSchema(corpo, erroCamposObrigatoriosSchema);
+        await validarSchema(corpo, erroCamposObrigatoriosSchema, 'erro de campos obrigatórios');
       });
     });
   });
