@@ -19,13 +19,27 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: Verificar tipos
+        run: npm run typecheck
+
       - name: Executar testes de API (funcionais + contrato)
         run: npm test
 
-      - name: Publicar relatório Mochawesome
+      # O Allure CLI roda sobre a JVM; o Java só é necessário para gerar o HTML.
+      - uses: actions/setup-java@v4
+        if: always()
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gerar relatório Allure
+        if: always()
+        run: npx allure generate allure-results --clean -o allure-report
+
+      - name: Publicar relatório Allure
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mochawesome-report
-          path: reports/
+          name: allure-report
+          path: allure-report/
           retention-days: 14

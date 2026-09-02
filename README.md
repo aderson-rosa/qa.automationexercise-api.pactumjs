@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/aderson-rosa/qa.automationexercise-api.pactumjs/actions/workflows/ci.yml/badge.svg)
 
-Testes automatizados da API **[ServeRest](https://serverest.dev)** com **[PactumJS](https://pactumjs.github.io/)**, validação de contrato com **[Joi](https://joi.dev/)** e relatório **Mochawesome**, escritos em **TypeScript** sobre o runner **Mocha** (sem Gherkin).
+Testes automatizados da API **[ServeRest](https://serverest.dev)** com **[PactumJS](https://pactumjs.github.io/)**, validação de contrato com **[Joi](https://joi.dev/)** e relatório **Allure**, escritos em **TypeScript** sobre o runner **Mocha** (sem Gherkin).
 
 ## ✅ Escopo automatizado
 
@@ -19,6 +19,7 @@ Além dos cenários solicitados, cada endpoint recebeu casos negativos de valor 
 
 - **Node.js 20+** (LTS) e **npm**
 - Acesso à internet (os testes rodam contra o ambiente público `https://serverest.dev`)
+- **Java 8+** apenas para gerar/abrir o relatório Allure localmente (o Allure CLI roda sobre a JVM)
 
 Nenhuma variável de ambiente é obrigatória. Para apontar para outra instância do ServeRest (ex.: local via Docker), defina `BASE_URL`:
 
@@ -36,7 +37,15 @@ npm run test:usuarios  # apenas a suíte de Usuários
 npm run test:produtos  # apenas a suíte de Produtos
 ```
 
-O relatório HTML é gerado automaticamente em **`reports/api-report.html`** ao final de cada execução. No GitHub Actions, o mesmo relatório é publicado como artefato da pipeline.
+## 📊 Relatório Allure
+
+Cada execução grava os resultados em `allure-results/` (o resultado também aparece no console, via reporter `spec`). Para gerar e abrir o relatório:
+
+```bash
+npm run report:allure
+```
+
+O relatório registra o ambiente da execução (URL base, versão do Node e se rodou local ou no CI), para que um relatório isolado seja interpretável. Na pipeline, o HTML é gerado e publicado como artefato de cada execução.
 
 ## 🗂️ Estrutura e padrões
 
@@ -60,4 +69,4 @@ Decisões que sustentam o crescimento do projeto sem duplicação:
 
 ## 🚀 Pipeline
 
-O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo push/PR: instala dependências com `npm ci`, executa as três suítes e publica o relatório Mochawesome como artefato.
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo push/PR: instala dependências com `npm ci`, verifica os tipos, executa as três suítes e publica o relatório **Allure** como artefato.
