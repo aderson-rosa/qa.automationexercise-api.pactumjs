@@ -1,0 +1,12 @@
+{
+  "require": ["tsx/cjs", "src/config/mocha.setup.ts"],
+  "spec": ["tests/**/*.spec.ts"],
+  "timeout": 30000,
+  "reporter": "mochawesome",
+  "reporter-option": [
+    "reportDir=reports",
+    "reportFilename=api-report",
+    "consoleReporter=spec",
+    "quiet=true"
+  ]
+}
