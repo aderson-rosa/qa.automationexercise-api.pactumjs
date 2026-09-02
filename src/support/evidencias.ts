@@ -23,7 +23,12 @@ async function anexarChamada(spec: Spec, nome: string): Promise<void> {
   const interno = spec as unknown as {
     _request?: { method?: string; url?: string; body?: unknown };
     _response?: { statusCode?: number; json?: unknown };
+    _expect?: { statusCode?: number; jsonLike?: unknown[]; json?: unknown[] };
   };
+
+  // As validações de corpo ficam nos passos "Assert" do teste; aqui registra-se
+  // apenas o que o próprio Pactum valida na resolução da requisição.
+  const corpoEsperado = interno._expect?.json ?? [];
 
   const evidencia = {
     requisicao: {
@@ -34,6 +39,10 @@ async function anexarChamada(spec: Spec, nome: string): Promise<void> {
     resposta: {
       status: interno._response?.statusCode,
       corpo: mascarar(interno._response?.json),
+    },
+    validacoes_aplicadas: {
+      status_esperado: interno._expect?.statusCode,
+      ...(corpoEsperado.length > 0 ? { corpo_esperado: mascarar(corpoEsperado) } : {}),
     },
   };
 

@@ -3,6 +3,7 @@ import { buildUsuario } from '../src/factories/usuario.factory';
 import { postUsuario, deleteUsuario } from '../src/services/usuarios.service';
 import { expectSchema } from '../src/support/schema.assert';
 import { executarComEvidencia } from '../src/support/evidencias';
+import { arrange, act, assertar } from '../src/support/passos';
 import { cadastroUsuarioSchema } from '../src/schemas/usuario.schema';
 
 describe('Usuários @usuarios', () => {
@@ -18,76 +19,91 @@ describe('Usuários @usuarios', () => {
 
   describe('POST /usuarios', () => {
     it('deve cadastrar um novo usuário', async () => {
-      // Arrange
-      const usuario = buildUsuario();
+      const usuario = await arrange('usuário válido com e-mail único', () => buildUsuario());
 
-      // Act
-      const corpo = await executarComEvidencia<{ message: string; _id: string }>(
-        postUsuario(usuario).expectStatus(201).returns('res.body'),
-        'POST /usuarios - cadastro com sucesso',
+      const corpo = await act('cadastrar em POST /usuarios', () =>
+        executarComEvidencia<{ message: string; _id: string }>(
+          postUsuario(usuario).expectStatus(201).returns('res.body'),
+          'POST /usuarios - cadastro com sucesso',
+        ),
       );
-
-      // Assert
-      assert.equal(corpo.message, 'Cadastro realizado com sucesso');
-      assert.ok(corpo._id, 'o cadastro deve retornar o _id do usuário criado');
       idsParaLimpar.push(corpo._id);
+
+      await assertar('cadastro confirmado com o _id do usuário criado', () => {
+        assert.equal(corpo.message, 'Cadastro realizado com sucesso');
+        assert.ok(corpo._id, 'o cadastro deve retornar o _id do usuário criado');
+      });
     });
 
     it('contrato: resposta do cadastro com sucesso adere ao schema', async () => {
-      // Arrange
-      const usuario = buildUsuario();
+      const usuario = await arrange('usuário válido com e-mail único', () => buildUsuario());
 
-      // Act
-      const corpo = await executarComEvidencia<{ _id: string }>(
-        postUsuario(usuario).expectStatus(201).returns('res.body'),
-        'POST /usuarios - contrato da resposta',
+      const corpo = await act('cadastrar em POST /usuarios', () =>
+        executarComEvidencia<{ _id: string }>(
+          postUsuario(usuario).expectStatus(201).returns('res.body'),
+          'POST /usuarios - contrato da resposta',
+        ),
       );
       idsParaLimpar.push(corpo._id);
 
-      // Assert
-      expectSchema(corpo, cadastroUsuarioSchema);
+      await assertar('corpo adere ao schema Joi de cadastro com sucesso', () => {
+        expectSchema(corpo, cadastroUsuarioSchema);
+      });
     });
 
     it('não deve cadastrar usuário com e-mail já utilizado', async () => {
-      // Arrange
-      const usuario = buildUsuario();
-      const id = await postUsuario(usuario).expectStatus(201).returns('_id');
-      idsParaLimpar.push(id);
+      const usuario = await arrange('usuário já cadastrado na aplicação', async () => {
+        const novo = buildUsuario();
+        const id = await postUsuario(novo).expectStatus(201).returns('_id');
+        idsParaLimpar.push(id);
+        return novo;
+      });
 
-      // Act + Assert
-      await executarComEvidencia(
-        postUsuario(usuario)
-          .expectStatus(400)
-          .expectJson({ message: 'Este email já está sendo usado' }),
-        'POST /usuarios - e-mail duplicado',
+      const corpo = await act('repetir o cadastro com o mesmo e-mail', () =>
+        executarComEvidencia<{ message: string }>(
+          postUsuario(usuario).expectStatus(400).returns('res.body'),
+          'POST /usuarios - e-mail duplicado',
+        ),
       );
+
+      await assertar('API rejeita a duplicidade de e-mail', () => {
+        assert.equal(corpo.message, 'Este email já está sendo usado');
+      });
     });
   });
 
   describe('DELETE /usuarios/{_id}', () => {
     it('deve excluir um usuário existente por id', async () => {
-      // Arrange
-      const usuario = buildUsuario();
-      const id = await postUsuario(usuario).expectStatus(201).returns('_id');
-
-      // Act + Assert
-      await executarComEvidencia(
-        deleteUsuario(id).expectStatus(200).expectJson({ message: 'Registro excluído com sucesso' }),
-        'DELETE /usuarios/{_id} - exclusão com sucesso',
+      const id = await arrange('usuário criado para ser excluído', () =>
+        postUsuario(buildUsuario()).expectStatus(201).returns('_id'),
       );
+
+      const corpo = await act('excluir em DELETE /usuarios/{_id}', () =>
+        executarComEvidencia<{ message: string }>(
+          deleteUsuario(id).expectStatus(200).returns('res.body'),
+          'DELETE /usuarios/{_id} - exclusão com sucesso',
+        ),
+      );
+
+      await assertar('exclusão confirmada pela API', () => {
+        assert.equal(corpo.message, 'Registro excluído com sucesso');
+      });
     });
 
     it('deve informar quando nenhum registro é excluído (id inexistente)', async () => {
-      // Arrange
-      const idInexistente = 'aaaabbbbcccc0000';
+      const idInexistente = await arrange('id inexistente no formato aceito pela API', () => 'aaaabbbbcccc0000');
 
-      // Act + Assert (a API trata exclusão de id inexistente como operação sem efeito)
-      await executarComEvidencia(
-        deleteUsuario(idInexistente)
-          .expectStatus(200)
-          .expectJson({ message: 'Nenhum registro excluído' }),
-        'DELETE /usuarios/{_id} - id inexistente',
+      const corpo = await act('excluir em DELETE /usuarios/{_id}', () =>
+        executarComEvidencia<{ message: string }>(
+          deleteUsuario(idInexistente).expectStatus(200).returns('res.body'),
+          'DELETE /usuarios/{_id} - id inexistente',
+        ),
       );
+
+      // A API trata exclusão de id inexistente como operação sem efeito, e não como erro.
+      await assertar('API informa que nenhum registro foi excluído', () => {
+        assert.equal(corpo.message, 'Nenhum registro excluído');
+      });
     });
   });
 });

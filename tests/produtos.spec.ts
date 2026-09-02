@@ -6,6 +6,7 @@ import { postLogin } from '../src/services/login.service';
 import { postProduto, deleteProduto } from '../src/services/produtos.service';
 import { expectSchema } from '../src/support/schema.assert';
 import { executarComEvidencia } from '../src/support/evidencias';
+import { arrange, act, assertar } from '../src/support/passos';
 import { cadastroProdutoSchema } from '../src/schemas/produto.schema';
 
 describe('Produtos @produtos', () => {
@@ -32,65 +33,74 @@ describe('Produtos @produtos', () => {
 
   describe('POST /produtos', () => {
     it('deve cadastrar um novo produto', async () => {
-      // Arrange
-      const produto = buildProduto();
+      const produto = await arrange('produto válido com nome único', () => buildProduto());
 
-      // Act
-      const corpo = await executarComEvidencia<{ message: string; _id: string }>(
-        postProduto(produto, token).expectStatus(201).returns('res.body'),
-        'POST /produtos - cadastro com sucesso',
+      const corpo = await act('cadastrar em POST /produtos com token de administrador', () =>
+        executarComEvidencia<{ message: string; _id: string }>(
+          postProduto(produto, token).expectStatus(201).returns('res.body'),
+          'POST /produtos - cadastro com sucesso',
+        ),
       );
-
-      // Assert
-      assert.equal(corpo.message, 'Cadastro realizado com sucesso');
-      assert.ok(corpo._id, 'o cadastro deve retornar o _id do produto criado');
       produtosParaLimpar.push(corpo._id);
+
+      await assertar('cadastro confirmado com o _id do produto criado', () => {
+        assert.equal(corpo.message, 'Cadastro realizado com sucesso');
+        assert.ok(corpo._id, 'o cadastro deve retornar o _id do produto criado');
+      });
     });
 
     it('contrato: resposta do cadastro de produto com sucesso adere ao schema', async () => {
-      // Arrange
-      const produto = buildProduto();
+      const produto = await arrange('produto válido com nome único', () => buildProduto());
 
-      // Act
-      const corpo = await executarComEvidencia<{ _id: string }>(
-        postProduto(produto, token).expectStatus(201).returns('res.body'),
-        'POST /produtos - contrato da resposta',
+      const corpo = await act('cadastrar em POST /produtos com token de administrador', () =>
+        executarComEvidencia<{ _id: string }>(
+          postProduto(produto, token).expectStatus(201).returns('res.body'),
+          'POST /produtos - contrato da resposta',
+        ),
       );
       produtosParaLimpar.push(corpo._id);
 
-      // Assert
-      expectSchema(corpo, cadastroProdutoSchema);
+      await assertar('corpo adere ao schema Joi de cadastro de produto', () => {
+        expectSchema(corpo, cadastroProdutoSchema);
+      });
     });
 
     it('não deve cadastrar produto sem token de autenticação', async () => {
-      // Arrange
-      const produto = buildProduto();
+      const produto = await arrange('produto válido, sem token na requisição', () => buildProduto());
 
-      // Act + Assert
-      await executarComEvidencia(
-        postProduto(produto)
-          .expectStatus(401)
-          .expectJson({
-            message:
-              'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais',
-          }),
-        'POST /produtos - sem token de autenticação',
+      const corpo = await act('cadastrar em POST /produtos sem cabeçalho Authorization', () =>
+        executarComEvidencia<{ message: string }>(
+          postProduto(produto).expectStatus(401).returns('res.body'),
+          'POST /produtos - sem token de autenticação',
+        ),
       );
+
+      await assertar('API bloqueia o cadastro por ausência de token', () => {
+        assert.equal(
+          corpo.message,
+          'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais',
+        );
+      });
     });
 
     it('não deve cadastrar produto com nome duplicado', async () => {
-      // Arrange
-      const produto = buildProduto();
-      const id = await postProduto(produto, token).expectStatus(201).returns('_id');
-      produtosParaLimpar.push(id);
+      const produto = await arrange('produto já cadastrado na aplicação', async () => {
+        const novo = buildProduto();
+        const id = await postProduto(novo, token).expectStatus(201).returns('_id');
+        produtosParaLimpar.push(id);
+        return novo;
+      });
 
-      // Act + Assert
-      await executarComEvidencia(
-        postProduto(produto, token)
-          .expectStatus(400)
-          .expectJson({ message: 'Já existe produto com esse nome' }),
-        'POST /produtos - nome duplicado',
+      const corpo = await act('repetir o cadastro com o mesmo nome', () =>
+        executarComEvidencia<{ message: string }>(
+          postProduto(produto, token).expectStatus(400).returns('res.body'),
+          'POST /produtos - nome duplicado',
+        ),
       );
+
+      await assertar('API rejeita a duplicidade de nome', () => {
+        assert.equal(corpo.message, 'Já existe produto com esse nome');
+      });
     });
   });
 });

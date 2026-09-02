@@ -47,7 +47,16 @@ Cada execução grava os resultados em `allure-results/` (o resultado também ap
 npm run report:allure
 ```
 
-Cada teste anexa ao relatório a **evidência da chamada** (método, URL, corpo enviado, status e corpo recebido), inclusive nos cenários aprovados: é o equivalente ao screenshot em testes de interface e permite auditar o que trafegou sem reexecutar a suíte. Campos sensíveis (`password`, `authorization`) são mascarados, já que o relatório fica publicado.
+Cada teste aparece no relatório com **todos os seus passos**, na estrutura Triple A:
+
+```
+Arrange: usuário já cadastrado na aplicação
+Act: repetir o cadastro com o mesmo e-mail
+  └── POST /usuarios - e-mail duplicado   [evidência anexada]
+Assert: API rejeita a duplicidade de e-mail
+```
+
+A **evidência da chamada** (método, URL, corpo enviado, status, corpo recebido e as validações aplicadas pelo framework) é anexada em todos os cenários, inclusive nos aprovados: é o equivalente ao screenshot em testes de interface e permite auditar o que trafegou sem reexecutar a suíte. Campos sensíveis (`password`, `authorization`) são mascarados, já que o relatório fica publicado.
 
 O relatório também registra o ambiente da execução (URL base, versão do Node e se rodou local ou no CI), para que um relatório isolado seja interpretável.
 
@@ -68,7 +77,7 @@ Decisões que sustentam o crescimento do projeto sem duplicação:
 - **Service Object por recurso:** a montagem da requisição (rota, corpo, headers) vive em `src/services`; os testes encadeiam apenas as **expectativas**. Um endpoint novo entra criando um service e um spec.
 - **Factories com dados únicos:** e-mails e nomes de produto levam timestamp, evitando colisão no ambiente compartilhado do ServeRest e permitindo reexecuções ilimitadas.
 - **Contratos isolados em `schemas/`:** os testes de contrato usam Joi com `abortEarly: false`, reportando todas as violações de uma vez.
-- **Triple A:** todos os testes seguem Arrange / Act / Assert com marcação explícita.
+- **Triple A visível no relatório:** os helpers `arrange`, `act` e `assertar` (`src/support/passos.ts`) transformam cada fase em um passo nomeado do Allure, então a estrutura do teste é legível para quem lê o relatório sem abrir o código.
 - **Auto-limpeza:** cada suíte cria e remove a própria massa (`before`/`after`/`afterEach`), deixando o ambiente como o encontrou.
 
 ## 🚀 Pipeline

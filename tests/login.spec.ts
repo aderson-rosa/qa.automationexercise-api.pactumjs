@@ -4,6 +4,7 @@ import { postUsuario, deleteUsuario } from '../src/services/usuarios.service';
 import { postLogin } from '../src/services/login.service';
 import { expectSchema } from '../src/support/schema.assert';
 import { executarComEvidencia } from '../src/support/evidencias';
+import { arrange, act, assertar } from '../src/support/passos';
 import { loginComSucessoSchema } from '../src/schemas/login.schema';
 
 describe('Login @login', () => {
@@ -23,45 +24,58 @@ describe('Login @login', () => {
     });
 
     it('deve autenticar um usuário com credenciais válidas', async () => {
-      // Arrange
-      const credenciais = { email: usuario.email, password: usuario.password };
+      const credenciais = await arrange('credenciais do usuário cadastrado na suíte', () => ({
+        email: usuario.email,
+        password: usuario.password,
+      }));
 
-      // Act
-      const corpo = await executarComEvidencia<{ message: string; authorization: string }>(
-        postLogin(credenciais).expectStatus(200).returns('res.body'),
-        'POST /login - credenciais válidas',
+      const corpo = await act('autenticar em POST /login', () =>
+        executarComEvidencia<{ message: string; authorization: string }>(
+          postLogin(credenciais).expectStatus(200).returns('res.body'),
+          'POST /login - credenciais válidas',
+        ),
       );
 
-      // Assert
-      assert.equal(corpo.message, 'Login realizado com sucesso');
-      assert.match(corpo.authorization, /^Bearer\s.+/);
+      await assertar('resposta confirma o login e devolve token Bearer', () => {
+        assert.equal(corpo.message, 'Login realizado com sucesso');
+        assert.match(corpo.authorization, /^Bearer\s.+/);
+      });
     });
 
     it('contrato: resposta do login com sucesso adere ao schema', async () => {
-      // Arrange
-      const credenciais = { email: usuario.email, password: usuario.password };
+      const credenciais = await arrange('credenciais do usuário cadastrado na suíte', () => ({
+        email: usuario.email,
+        password: usuario.password,
+      }));
 
-      // Act
-      const corpo = await executarComEvidencia(
-        postLogin(credenciais).expectStatus(200).returns('res.body'),
-        'POST /login - contrato da resposta',
+      const corpo = await act('autenticar em POST /login', () =>
+        executarComEvidencia(
+          postLogin(credenciais).expectStatus(200).returns('res.body'),
+          'POST /login - contrato da resposta',
+        ),
       );
 
-      // Assert
-      expectSchema(corpo, loginComSucessoSchema);
+      await assertar('corpo adere ao schema Joi de login com sucesso', () => {
+        expectSchema(corpo, loginComSucessoSchema);
+      });
     });
 
     it('não deve autenticar com senha incorreta', async () => {
-      // Arrange
-      const credenciais = { email: usuario.email, password: 'senha-incorreta-123' };
+      const credenciais = await arrange('credenciais com senha inválida', () => ({
+        email: usuario.email,
+        password: 'senha-incorreta-123',
+      }));
 
-      // Act + Assert (a expectativa é avaliada na resolução da requisição)
-      await executarComEvidencia(
-        postLogin(credenciais)
-          .expectStatus(401)
-          .expectJson({ message: 'Email e/ou senha inválidos' }),
-        'POST /login - senha incorreta',
+      const corpo = await act('tentar autenticar em POST /login', () =>
+        executarComEvidencia<{ message: string }>(
+          postLogin(credenciais).expectStatus(401).returns('res.body'),
+          'POST /login - senha incorreta',
+        ),
       );
+
+      await assertar('API rejeita o acesso com a mensagem de credenciais inválidas', () => {
+        assert.equal(corpo.message, 'Email e/ou senha inválidos');
+      });
     });
   });
 });
