@@ -2,6 +2,8 @@
 
 ![CI](https://github.com/aderson-rosa/qa.automationexercise-api.pactumjs/actions/workflows/ci.yml/badge.svg)
 
+📊 **[Relatório Allure da última execução](https://aderson-rosa.github.io/qa.automationexercise-api.pactumjs/)** (publicado automaticamente pela pipeline)
+
 Testes automatizados da API **[ServeRest](https://serverest.dev)** com **[PactumJS](https://pactumjs.github.io/)**, validação de contrato com **[Joi](https://joi.dev/)** e relatório **Allure**, escritos em **TypeScript** sobre o runner **Mocha** (sem Gherkin).
 
 ## ✅ Escopo automatizado
@@ -69,4 +71,4 @@ Decisões que sustentam o crescimento do projeto sem duplicação:
 
 ## 🚀 Pipeline
 
-O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo push/PR: instala dependências com `npm ci`, verifica os tipos, executa as três suítes e publica o relatório **Allure** como artefato.
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo push/PR: instala dependências com `npm ci`, verifica os tipos, executa as três suítes e gera o relatório **Allure**, publicado de duas formas: como **artefato** da execução e, nas execuções da `main`, no **GitHub Pages**, em uma URL fixa que sempre reflete a última execução.
