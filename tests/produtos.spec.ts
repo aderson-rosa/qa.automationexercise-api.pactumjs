@@ -43,9 +43,15 @@ describe('Produtos @produtos', () => {
       );
       produtosParaLimpar.push(corpo._id);
 
-      await assertar('cadastro confirmado com o _id do produto criado', () => {
+      await assertar('corpo contém apenas a mensagem de sucesso e o _id no formato da API', () => {
+        assert.deepEqual(
+          Object.keys(corpo).sort(),
+          ['_id', 'message'],
+          'a resposta não deve conter campos além de message e _id',
+        );
         assert.equal(corpo.message, 'Cadastro realizado com sucesso');
-        assert.ok(corpo._id, 'o cadastro deve retornar o _id do produto criado');
+        // A API identifica os registros com 16 caracteres alfanuméricos.
+        assert.match(corpo._id, /^[A-Za-z0-9]{16}$/);
       });
     });
 
@@ -75,11 +81,11 @@ describe('Produtos @produtos', () => {
         ),
       );
 
-      await assertar('API bloqueia o cadastro por ausência de token', () => {
-        assert.equal(
-          corpo.message,
-          'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais',
-        );
+      await assertar('corpo traz apenas a mensagem de token ausente, sem criar registro', () => {
+        assert.deepEqual(corpo, {
+          message:
+            'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais',
+        });
       });
     });
 
@@ -98,8 +104,8 @@ describe('Produtos @produtos', () => {
         ),
       );
 
-      await assertar('API rejeita a duplicidade de nome', () => {
-        assert.equal(corpo.message, 'Já existe produto com esse nome');
+      await assertar('corpo traz apenas a mensagem de nome duplicado, sem criar registro', () => {
+        assert.deepEqual(corpo, { message: 'Já existe produto com esse nome' });
       });
     });
   });

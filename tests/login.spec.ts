@@ -36,9 +36,15 @@ describe('Login @login', () => {
         ),
       );
 
-      await assertar('resposta confirma o login e devolve token Bearer', () => {
+      await assertar('corpo contém apenas mensagem de sucesso e token JWT no padrão Bearer', () => {
+        assert.deepEqual(
+          Object.keys(corpo).sort(),
+          ['authorization', 'message'],
+          'a resposta não deve conter campos além de message e authorization',
+        );
         assert.equal(corpo.message, 'Login realizado com sucesso');
-        assert.match(corpo.authorization, /^Bearer\s.+/);
+        // Token no formato "Bearer <header>.<payload>.<assinatura>".
+        assert.match(corpo.authorization, /^Bearer\s[\w-]+\.[\w-]+\.[\w-]+$/);
       });
     });
 
@@ -73,8 +79,8 @@ describe('Login @login', () => {
         ),
       );
 
-      await assertar('API rejeita o acesso com a mensagem de credenciais inválidas', () => {
-        assert.equal(corpo.message, 'Email e/ou senha inválidos');
+      await assertar('corpo traz apenas a mensagem de credenciais inválidas, sem token', () => {
+        assert.deepEqual(corpo, { message: 'Email e/ou senha inválidos' });
       });
     });
   });

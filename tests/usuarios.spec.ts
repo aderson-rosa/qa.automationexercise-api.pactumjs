@@ -29,9 +29,15 @@ describe('Usuários @usuarios', () => {
       );
       idsParaLimpar.push(corpo._id);
 
-      await assertar('cadastro confirmado com o _id do usuário criado', () => {
+      await assertar('corpo contém apenas a mensagem de sucesso e o _id no formato da API', () => {
+        assert.deepEqual(
+          Object.keys(corpo).sort(),
+          ['_id', 'message'],
+          'a resposta não deve conter campos além de message e _id',
+        );
         assert.equal(corpo.message, 'Cadastro realizado com sucesso');
-        assert.ok(corpo._id, 'o cadastro deve retornar o _id do usuário criado');
+        // A API identifica os registros com 16 caracteres alfanuméricos.
+        assert.match(corpo._id, /^[A-Za-z0-9]{16}$/);
       });
     });
 
@@ -66,8 +72,8 @@ describe('Usuários @usuarios', () => {
         ),
       );
 
-      await assertar('API rejeita a duplicidade de e-mail', () => {
-        assert.equal(corpo.message, 'Este email já está sendo usado');
+      await assertar('corpo traz apenas a mensagem de e-mail duplicado, sem criar registro', () => {
+        assert.deepEqual(corpo, { message: 'Este email já está sendo usado' });
       });
     });
   });
@@ -85,8 +91,8 @@ describe('Usuários @usuarios', () => {
         ),
       );
 
-      await assertar('exclusão confirmada pela API', () => {
-        assert.equal(corpo.message, 'Registro excluído com sucesso');
+      await assertar('corpo traz apenas a confirmação da exclusão', () => {
+        assert.deepEqual(corpo, { message: 'Registro excluído com sucesso' });
       });
     });
 
@@ -101,8 +107,8 @@ describe('Usuários @usuarios', () => {
       );
 
       // A API trata exclusão de id inexistente como operação sem efeito, e não como erro.
-      await assertar('API informa que nenhum registro foi excluído', () => {
-        assert.equal(corpo.message, 'Nenhum registro excluído');
+      await assertar('corpo traz apenas a informação de que nada foi excluído', () => {
+        assert.deepEqual(corpo, { message: 'Nenhum registro excluído' });
       });
     });
   });

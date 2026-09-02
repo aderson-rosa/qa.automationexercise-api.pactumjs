@@ -78,6 +78,7 @@ Decisões que sustentam o crescimento do projeto sem duplicação:
 - **Factories com dados únicos:** e-mails e nomes de produto levam timestamp, evitando colisão no ambiente compartilhado do ServeRest e permitindo reexecuções ilimitadas.
 - **Contratos isolados em `schemas/`:** os testes de contrato usam Joi com `abortEarly: false`, reportando todas as violações de uma vez.
 - **Triple A visível no relatório:** os helpers `arrange`, `act` e `assertar` (`src/support/passos.ts`) transformam cada fase em um passo nomeado do Allure, então a estrutura do teste é legível para quem lê o relatório sem abrir o código.
+- **Validação completa do corpo:** as asserções cobrem o corpo inteiro da resposta, e não apenas um campo. Respostas de mensagem única são comparadas com `deepEqual` (o que também reprova campos extras inesperados) e, nos cadastros, além da mensagem, valida-se o conjunto exato de chaves e o formato do `_id` (16 caracteres alfanuméricos) e do token (`Bearer <jwt>`).
 - **Auto-limpeza:** cada suíte cria e remove a própria massa (`before`/`after`/`afterEach`), deixando o ambiente como o encontrou.
 
 ## 🚀 Pipeline
