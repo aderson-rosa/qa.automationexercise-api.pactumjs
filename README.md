@@ -47,7 +47,9 @@ Cada execução grava os resultados em `allure-results/` (o resultado também ap
 npm run report:allure
 ```
 
-O relatório registra o ambiente da execução (URL base, versão do Node e se rodou local ou no CI), para que um relatório isolado seja interpretável. Na pipeline, o HTML é gerado e publicado como artefato de cada execução.
+Cada teste anexa ao relatório a **evidência da chamada** (método, URL, corpo enviado, status e corpo recebido), inclusive nos cenários aprovados: é o equivalente ao screenshot em testes de interface e permite auditar o que trafegou sem reexecutar a suíte. Campos sensíveis (`password`, `authorization`) são mascarados, já que o relatório fica publicado.
+
+O relatório também registra o ambiente da execução (URL base, versão do Node e se rodou local ou no CI), para que um relatório isolado seja interpretável.
 
 ## 🗂️ Estrutura e padrões
 
@@ -57,7 +59,7 @@ O relatório registra o ambiente da execução (URL base, versão do Node e se r
 │   ├── factories/              # massa de dados única por execução (Faker)
 │   ├── schemas/                # contratos Joi, um por recurso
 │   ├── services/               # Service Objects: montagem das requisições por recurso
-│   └── support/schema.assert.ts# asserção de contrato reutilizável
+│   └── support/               # asserção de contrato e evidência de chamada (Allure)
 └── tests/                      # suítes (login, usuários, produtos)
 ```
 

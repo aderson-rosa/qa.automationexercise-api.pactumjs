@@ -5,6 +5,7 @@ import { postUsuario, deleteUsuario } from '../src/services/usuarios.service';
 import { postLogin } from '../src/services/login.service';
 import { postProduto, deleteProduto } from '../src/services/produtos.service';
 import { expectSchema } from '../src/support/schema.assert';
+import { executarComEvidencia } from '../src/support/evidencias';
 import { cadastroProdutoSchema } from '../src/schemas/produto.schema';
 
 describe('Produtos @produtos', () => {
@@ -35,7 +36,10 @@ describe('Produtos @produtos', () => {
       const produto = buildProduto();
 
       // Act
-      const corpo = await postProduto(produto, token).expectStatus(201).returns('res.body');
+      const corpo = await executarComEvidencia<{ message: string; _id: string }>(
+        postProduto(produto, token).expectStatus(201).returns('res.body'),
+        'POST /produtos - cadastro com sucesso',
+      );
 
       // Assert
       assert.equal(corpo.message, 'Cadastro realizado com sucesso');
@@ -48,7 +52,10 @@ describe('Produtos @produtos', () => {
       const produto = buildProduto();
 
       // Act
-      const corpo = await postProduto(produto, token).expectStatus(201).returns('res.body');
+      const corpo = await executarComEvidencia<{ _id: string }>(
+        postProduto(produto, token).expectStatus(201).returns('res.body'),
+        'POST /produtos - contrato da resposta',
+      );
       produtosParaLimpar.push(corpo._id);
 
       // Assert
@@ -60,11 +67,15 @@ describe('Produtos @produtos', () => {
       const produto = buildProduto();
 
       // Act + Assert
-      await postProduto(produto)
-        .expectStatus(401)
-        .expectJson({
-          message: 'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais',
-        });
+      await executarComEvidencia(
+        postProduto(produto)
+          .expectStatus(401)
+          .expectJson({
+            message:
+              'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais',
+          }),
+        'POST /produtos - sem token de autenticação',
+      );
     });
 
     it('não deve cadastrar produto com nome duplicado', async () => {
@@ -74,9 +85,12 @@ describe('Produtos @produtos', () => {
       produtosParaLimpar.push(id);
 
       // Act + Assert
-      await postProduto(produto, token)
-        .expectStatus(400)
-        .expectJson({ message: 'Já existe produto com esse nome' });
+      await executarComEvidencia(
+        postProduto(produto, token)
+          .expectStatus(400)
+          .expectJson({ message: 'Já existe produto com esse nome' }),
+        'POST /produtos - nome duplicado',
+      );
     });
   });
 });
