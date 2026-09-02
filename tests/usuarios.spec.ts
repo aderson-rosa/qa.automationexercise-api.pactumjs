@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { buildUsuario } from '../src/factories/usuario.factory';
 import { postUsuario, deleteUsuario } from '../src/services/usuarios.service';
-import { expectSchema } from '../src/support/schema.assert';
+import { expectSchema, expectCamposObrigatorios } from '../src/support/schema.assert';
 import { executarComEvidencia } from '../src/support/evidencias';
 import { arrange, act, assertar } from '../src/support/passos';
 import { cadastroUsuarioSchema } from '../src/schemas/usuario.schema';
+import { respostaComMensagemSchema, erroCamposObrigatoriosSchema } from '../src/schemas/erro.schema';
 
 describe('Usuários @usuarios', () => {
   // Ids criados pelos testes; a limpeza roda após cada teste para deixar o
@@ -55,6 +56,37 @@ describe('Usuários @usuarios', () => {
       await assertar('corpo adere ao schema Joi de cadastro com sucesso', () => {
         expectSchema(corpo, cadastroUsuarioSchema);
       });
+
+      await assertar('schema exige mensagem e _id, rejeitando respostas incompletas', () => {
+        expectCamposObrigatorios(corpo as unknown as Record<string, unknown>, cadastroUsuarioSchema, [
+          'message',
+          '_id',
+        ]);
+      });
+    });
+
+    it('contrato: erro de campos obrigatórios adere ao schema', async () => {
+      const usuarioVazio = await arrange('requisição sem nenhum campo do cadastro', () => ({}));
+
+      const corpo = await act('enviar POST /usuarios sem os campos obrigatórios', () =>
+        executarComEvidencia<Record<string, string>>(
+          postUsuario(usuarioVazio as never).expectStatus(400).returns('res.body'),
+          'POST /usuarios - campos obrigatórios ausentes',
+        ),
+      );
+
+      await assertar('API aponta todos os campos obrigatórios do cadastro', () => {
+        assert.deepEqual(corpo, {
+          nome: 'nome é obrigatório',
+          email: 'email é obrigatório',
+          password: 'password é obrigatório',
+          administrador: 'administrador é obrigatório',
+        });
+      });
+
+      await assertar('contrato: erro de validação adere ao schema de campos obrigatórios', () => {
+        expectSchema(corpo, erroCamposObrigatoriosSchema);
+      });
     });
 
     it('não deve cadastrar usuário com e-mail já utilizado', async () => {
@@ -75,6 +107,10 @@ describe('Usuários @usuarios', () => {
       await assertar('corpo traz apenas a mensagem de e-mail duplicado, sem criar registro', () => {
         assert.deepEqual(corpo, { message: 'Este email já está sendo usado' });
       });
+
+      await assertar('contrato: resposta de erro adere ao schema de mensagem única', () => {
+        expectSchema(corpo, respostaComMensagemSchema);
+      });
     });
   });
 
@@ -94,6 +130,10 @@ describe('Usuários @usuarios', () => {
       await assertar('corpo traz apenas a confirmação da exclusão', () => {
         assert.deepEqual(corpo, { message: 'Registro excluído com sucesso' });
       });
+
+      await assertar('contrato: resposta da exclusão adere ao schema de mensagem única', () => {
+        expectSchema(corpo, respostaComMensagemSchema);
+      });
     });
 
     it('deve informar quando nenhum registro é excluído (id inexistente)', async () => {
@@ -109,6 +149,10 @@ describe('Usuários @usuarios', () => {
       // A API trata exclusão de id inexistente como operação sem efeito, e não como erro.
       await assertar('corpo traz apenas a informação de que nada foi excluído', () => {
         assert.deepEqual(corpo, { message: 'Nenhum registro excluído' });
+      });
+
+      await assertar('contrato: resposta adere ao schema de mensagem única', () => {
+        expectSchema(corpo, respostaComMensagemSchema);
       });
     });
   });

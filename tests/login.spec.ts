@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { buildUsuario, type Usuario } from '../src/factories/usuario.factory';
 import { postUsuario, deleteUsuario } from '../src/services/usuarios.service';
 import { postLogin } from '../src/services/login.service';
-import { expectSchema } from '../src/support/schema.assert';
+import { expectSchema, expectCamposObrigatorios } from '../src/support/schema.assert';
 import { executarComEvidencia } from '../src/support/evidencias';
 import { arrange, act, assertar } from '../src/support/passos';
 import { loginComSucessoSchema } from '../src/schemas/login.schema';
+import { respostaComMensagemSchema, erroCamposObrigatoriosSchema } from '../src/schemas/erro.schema';
 
 describe('Login @login', () => {
   describe('POST /login', () => {
@@ -64,6 +65,13 @@ describe('Login @login', () => {
       await assertar('corpo adere ao schema Joi de login com sucesso', () => {
         expectSchema(corpo, loginComSucessoSchema);
       });
+
+      await assertar('schema exige mensagem e token, rejeitando respostas incompletas', () => {
+        expectCamposObrigatorios(corpo as Record<string, unknown>, loginComSucessoSchema, [
+          'message',
+          'authorization',
+        ]);
+      });
     });
 
     it('não deve autenticar com senha incorreta', async () => {
@@ -81,6 +89,35 @@ describe('Login @login', () => {
 
       await assertar('corpo traz apenas a mensagem de credenciais inválidas, sem token', () => {
         assert.deepEqual(corpo, { message: 'Email e/ou senha inválidos' });
+      });
+
+      await assertar('contrato: resposta de erro adere ao schema de mensagem única', () => {
+        expectSchema(corpo, respostaComMensagemSchema);
+        expectCamposObrigatorios(corpo as unknown as Record<string, unknown>, respostaComMensagemSchema, [
+          'message',
+        ]);
+      });
+    });
+
+    it('contrato: erro de campos obrigatórios adere ao schema', async () => {
+      const credenciaisVazias = await arrange('requisição sem e-mail e sem senha', () => ({}));
+
+      const corpo = await act('enviar POST /login sem os campos obrigatórios', () =>
+        executarComEvidencia<Record<string, string>>(
+          postLogin(credenciaisVazias as never).expectStatus(400).returns('res.body'),
+          'POST /login - campos obrigatórios ausentes',
+        ),
+      );
+
+      await assertar('API aponta e-mail e senha como obrigatórios', () => {
+        assert.deepEqual(corpo, {
+          email: 'email é obrigatório',
+          password: 'password é obrigatório',
+        });
+      });
+
+      await assertar('contrato: erro de validação adere ao schema de campos obrigatórios', () => {
+        expectSchema(corpo, erroCamposObrigatoriosSchema);
       });
     });
   });

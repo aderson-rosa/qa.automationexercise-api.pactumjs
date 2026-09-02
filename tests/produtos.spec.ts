@@ -4,10 +4,11 @@ import { buildProduto } from '../src/factories/produto.factory';
 import { postUsuario, deleteUsuario } from '../src/services/usuarios.service';
 import { postLogin } from '../src/services/login.service';
 import { postProduto, deleteProduto } from '../src/services/produtos.service';
-import { expectSchema } from '../src/support/schema.assert';
+import { expectSchema, expectCamposObrigatorios } from '../src/support/schema.assert';
 import { executarComEvidencia } from '../src/support/evidencias';
 import { arrange, act, assertar } from '../src/support/passos';
 import { cadastroProdutoSchema } from '../src/schemas/produto.schema';
+import { respostaComMensagemSchema, erroCamposObrigatoriosSchema } from '../src/schemas/erro.schema';
 
 describe('Produtos @produtos', () => {
   let token: string;
@@ -69,6 +70,37 @@ describe('Produtos @produtos', () => {
       await assertar('corpo adere ao schema Joi de cadastro de produto', () => {
         expectSchema(corpo, cadastroProdutoSchema);
       });
+
+      await assertar('schema exige mensagem e _id, rejeitando respostas incompletas', () => {
+        expectCamposObrigatorios(corpo as unknown as Record<string, unknown>, cadastroProdutoSchema, [
+          'message',
+          '_id',
+        ]);
+      });
+    });
+
+    it('contrato: erro de campos obrigatórios adere ao schema', async () => {
+      const produtoVazio = await arrange('requisição autenticada sem nenhum campo', () => ({}));
+
+      const corpo = await act('enviar POST /produtos sem os campos obrigatórios', () =>
+        executarComEvidencia<Record<string, string>>(
+          postProduto(produtoVazio as never, token).expectStatus(400).returns('res.body'),
+          'POST /produtos - campos obrigatórios ausentes',
+        ),
+      );
+
+      await assertar('API aponta todos os campos obrigatórios do produto', () => {
+        assert.deepEqual(corpo, {
+          nome: 'nome é obrigatório',
+          preco: 'preco é obrigatório',
+          descricao: 'descricao é obrigatório',
+          quantidade: 'quantidade é obrigatório',
+        });
+      });
+
+      await assertar('contrato: erro de validação adere ao schema de campos obrigatórios', () => {
+        expectSchema(corpo, erroCamposObrigatoriosSchema);
+      });
     });
 
     it('não deve cadastrar produto sem token de autenticação', async () => {
@@ -86,6 +118,10 @@ describe('Produtos @produtos', () => {
           message:
             'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais',
         });
+      });
+
+      await assertar('contrato: resposta de erro adere ao schema de mensagem única', () => {
+        expectSchema(corpo, respostaComMensagemSchema);
       });
     });
 
@@ -106,6 +142,10 @@ describe('Produtos @produtos', () => {
 
       await assertar('corpo traz apenas a mensagem de nome duplicado, sem criar registro', () => {
         assert.deepEqual(corpo, { message: 'Já existe produto com esse nome' });
+      });
+
+      await assertar('contrato: resposta de erro adere ao schema de mensagem única', () => {
+        expectSchema(corpo, respostaComMensagemSchema);
       });
     });
   });
